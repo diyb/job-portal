@@ -1,0 +1,49 @@
+services:
+  web:
+    build: .
+    container_name: jobportal_web
+    ports:
+      - "8080:80"          # http://localhost:8080/
+    volumes:
+      - .:/var/www/html/jobportal
+    environment:
+      DB_HOST: db
+      DB_NAME: jobportal
+      DB_USER: root
+      DB_PASS: root
+      APP_DEBUG: "1"       # näitab andmebaasi vea põhjust; eemalda tööskeskkonnas
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    container_name: jobportal_db
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: jobportal
+    volumes:
+      - db_data:/var/lib/mysql
+      # Imporditakse automaatselt ainult esimesel käivitamisel (tühja andmebaasiga)
+      - ./database.sql:/docker-entrypoint-initdb.d/database.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: jobportal_pma
+    ports:
+      - "8081:80"          # http://localhost:8081
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+    depends_on:
+      - db
+
+volumes:
+  db_data:
